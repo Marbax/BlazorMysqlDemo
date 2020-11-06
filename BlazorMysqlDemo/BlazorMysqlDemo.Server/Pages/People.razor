@@ -1,0 +1,142 @@
+﻿@page "/people"
+
+@using Microsoft.Extensions.Configuration
+@using BlazorMysqlDemo.DataLibrary
+@using BlazorMysqlDemo.DataLibrary.Models
+@inject IDataAccess _data
+@inject IConfiguration _config
+@inject BlazorMysqlDemo.Server.Helpers.DataTable _table
+
+<h3>People</h3>
+@if (!string.IsNullOrEmpty(errMsg))
+{
+    <p class="text-danger m-5 border-danger">@errMsg</p>
+}
+
+@if (_data == null || people == null)
+{
+    <p><em>Loading...</em></p>
+}
+else
+{
+    <div class="m-2">
+        <input placeholder="New name" @bind="NewName" />
+        <input placeholder="New surname" @bind="NewSurname" />
+        <button class="btn btn-primary m-2" @onclick="InsertData">Insert</button>
+    </div>
+
+    <div class="table-responsive">
+        <table class="table">
+            <thead class="table-dark">
+                <tr>
+                    <th>
+                        Name
+                    </th>
+                    <th>
+                        Surname
+                    </th>
+                    <th>
+                        Actions
+                    </th>
+                </tr>
+            </thead>
+            <tbody class="table-info">
+                @foreach (var p in people)
+                {
+                    var pId = p.Id;
+
+                    <tr class="d-table-row">
+                        <td>
+                            <input class="m-2" @bind="p.Name" />
+                        </td>
+                        <td>
+                            <input class="m-2" @bind="p.Surname" />
+                        </td>
+                        <td>
+                            <button class="btn btn-warning m-2" @onclick="@(async (e) => await UpdateData(e,pId))">Update</button>
+                            <button class="btn btn-danger m-2" @onclick="@(async (e) => await DeleteData(e,pId))">Delete</button>
+                        </td>
+                    </tr>
+                }
+
+            </tbody>
+        </table>
+    </div>
+}
+
+@code {
+
+    List<PersonModel> people;
+    string errMsg = "";
+
+    [Parameter]
+    public string NewName { get; set; } = "Name";
+
+    [Parameter]
+    public string NewSurname { get; set; } = "Surname";
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            _table.OnDataTable += () =>
+            {
+                people = _table.Persons;
+                InvokeAsync(this.StateHasChanged);
+            };
+
+            await Task.Run(() => LoadData());
+        }
+        catch (Exception ex)
+        {
+            errMsg = ex.Message;
+        }
+    }
+
+    private void LoadData()
+    {
+        _table.OnDataTable?.Invoke();
+    }
+
+    private Task InsertData()
+    {
+        try
+        {
+            return _table.AddPerson(new PersonModel() { Name = NewName, Surname = NewSurname });
+        }
+        catch (Exception ex)
+        {
+            errMsg = ex.Message;
+        }
+        return null;
+    }
+
+    private Task UpdateData(MouseEventArgs e, int id)
+    {
+        try
+        {
+            var edited = people.First(i => i.Id == id);
+            return _table.UpdatePerson(edited);
+        }
+        catch (Exception ex)
+        {
+            errMsg = ex.Message;
+        }
+        return null;
+    }
+
+    private Task DeleteData(MouseEventArgs e, int id)
+    {
+        try
+        {
+            var toDel = people.First(i => i.Id == id);
+
+            return _table.DeletePerson(toDel);
+        }
+        catch (Exception ex)
+        {
+            errMsg = ex.Message;
+        }
+        return null;
+    }
+}
